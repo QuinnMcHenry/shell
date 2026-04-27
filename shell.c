@@ -32,6 +32,11 @@ strcmp()
 strtok()
 */
 
+
+/*
+    Always return 1 to keep shell going and 0 to exit.
+*/
+
 // builtins declarations
 int sh_cd(char **args);
 int sh_help(char **args);
@@ -61,11 +66,7 @@ int sh_num_builtins() {
   Builtin function implementations.
 */
 
-/**
-   @brief Builtin command: change directory.
-   @param args List of args.  args[0] is "cd".  args[1] is the directory.
-   @return Always returns 1, to continue executing.
- */
+// change directory
 int sh_cd(char **args)
 {
   if (args[1] == NULL) {
@@ -78,16 +79,17 @@ int sh_cd(char **args)
   return 1;
 }
 
+// print cur proc
 int sh_print(char **args) {
-    printf("Current process: %d\n", getpid());
+    if (args[1]) {
+        fprintf(stderr, "sh: print does not take args.\n");
+    } else {
+        printf("Current process: %d\n", getpid());
+    }
     return 1;
 }
 
-/**
-   @brief Builtin command: print help.
-   @param args List of args.  Not examined.
-   @return Always returns 1, to continue executing.
- */
+// help
 int sh_help(char **args)
 {
   int i;
@@ -103,21 +105,13 @@ int sh_help(char **args)
   return 1;
 }
 
-/**
-   @brief Builtin command: exit.
-   @param args List of args.  Not examined.
-   @return Always returns 0, to terminate execution.
- */
+// exit
 int sh_exit(char **args)
 {
   return 0;
 }
 
-/**
-  @brief Launch a program and wait for it to terminate.
-  @param args Null terminated list of arguments (including program).
-  @return Always returns 1, to continue execution.
- */
+// clone self to run program and wait for it to terminate.
 int sh_launch(char **args)
 {
   pid_t pid;
@@ -125,8 +119,8 @@ int sh_launch(char **args)
 
   pid = fork();
   if (pid == 0) {
-    // Child process
-    if (execvp(args[0], args) == -1) {
+    // child
+    if (execvp(args[0], args) == -1) { 
       perror("sh");
     }
     exit(EXIT_FAILURE);
@@ -134,7 +128,7 @@ int sh_launch(char **args)
     // Error forking
     perror("sh");
   } else {
-    // Parent process
+    // parent
     do {
       waitpid(pid, &status, WUNTRACED);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
@@ -143,11 +137,7 @@ int sh_launch(char **args)
   return 1;
 }
 
-/**
-   @brief Execute shell built-in or launch program.
-   @param args Null terminated list of arguments.
-   @return 1 if the shell should continue running, 0 if it should terminate
- */
+// run program or builtin
 int sh_execute(char **args)
 {
   int i;
@@ -166,10 +156,7 @@ int sh_execute(char **args)
   return sh_launch(args);
 }
 
-/**
-   @brief Read a line of input from stdin.
-   @return The line from stdin.
- */
+// read line from stdin
 char *sh_read_line(void)
 {
 #ifdef SH_USE_STD_GETLINE
@@ -225,11 +212,8 @@ char *sh_read_line(void)
 
 #define SH_TOK_BUFSIZE 64
 #define SH_TOK_DELIM " \t\r\n\a"
-/**
-   @brief Split a line into tokens (very naively).
-   @param line The line.
-   @return Null-terminated array of tokens.
- */
+
+// split line into tokens
 char **sh_split_line(char *line)
 {
   int bufsize = SH_TOK_BUFSIZE, position = 0;
@@ -263,9 +247,7 @@ char **sh_split_line(char *line)
   return tokens;
 }
 
-/**
-   @brief Loop getting input and executing it.
- */
+// get input and execute it
 void sh_loop(void)
 {
   char *line;
@@ -275,6 +257,7 @@ void sh_loop(void)
   do {
     printf("?~ ");
     line = sh_read_line();
+    
     args = sh_split_line(line);
     status = sh_execute(args);
 
@@ -283,20 +266,12 @@ void sh_loop(void)
   } while (status);
 }
 
-/**
-   @brief Main entry point.
-   @param argc Argument count.
-   @param argv Argument vector.
-   @return status code
- */
+// main
 int main(int argc, char **argv)
 {
-  // Load config files, if any.
 
-  // Run command loop.
+  // command loop.
   sh_loop();
-
-  // Perform any shutdown/cleanup.
 
   return EXIT_SUCCESS;
 }
