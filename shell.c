@@ -193,9 +193,22 @@ char *sh_read_line(void)
       buffer[position] = '\0';
       return buffer;
     } else {
-      buffer[position] = c;
+        if (position < 100) {
+
+          buffer[position] = c;
+          position++;
+        }
+        else{
+          fprintf(stderr,"input is greater than 100 characers, truncating\n");
+
+          while (c != '\n' && c != EOF) {
+            c = getchar();
+          }
+
+          buffer[100] = '\0';
+          return buffer;
+        }
     }
-    position++;
 
     // If we have exceeded the buffer, reallocate.
     if (position >= bufsize) {
