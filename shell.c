@@ -205,7 +205,7 @@ char *sh_read_line(void)
             c = getchar();
           }
 
-          buffer[100] = '\0';
+          buffer[0] = '\0';
           return buffer;
         }
     }
@@ -260,16 +260,48 @@ char **sh_split_line(char *line)
   return tokens;
 }
 
+// check for valid input 
+int valid_input(const char *line)
+{
+  for (int i = 0; line[i] != '\0'; i++) {
+    char c = line[i];
+
+    if (
+        (c >= 'A' && c <= 'Z') ||
+        (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') ||
+        c >= '-' && c <= '.' || c == '/' || c == '_' ||
+        c == ' ' || c == '\t' ||
+        c == '&' || c == ';' 
+    )   {
+          continue;
+    }
+
+    return 0; // return 0 if not in char range
+  }
+
+  return 1;
+}
+
+
+
+
 // get input and execute it
 void sh_loop(void)
 {
   char *line;
   char **args;
-  int status;
+  int status = 1;
 
   do {
     printf("?~ ");
     line = sh_read_line();
+    // When input isn't in character range
+    if(!valid_input(line)) {
+      fprintf(stderr, "invalid character in input \n");
+      free(line);
+      continue; // skip execution
+    }
     
     args = sh_split_line(line);
     status = sh_execute(args);
