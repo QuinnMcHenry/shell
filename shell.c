@@ -223,6 +223,34 @@ char *sh_read_line(void)
 #endif
 }
 
+
+// split on &
+int sh_execute_sequential(char **args)
+{
+    int i = 0;
+    int status = 1;
+    
+    while (args[i] != NULL) {
+        char **segment_start = &args[i];
+
+        while (args[i] != NULL && strcmp(args[i], "&") != 0) {
+            i++;
+        }
+        
+        int was_and = (args[i] != NULL);
+        args[i] = NULL;
+    
+        if (segment_start[0] != NULL) {
+            status = sh_execute(segment_start); // call OG execute
+        }
+        
+        if (was_and) {
+            i++;
+        }
+    }
+    return status;
+}
+
 #define SH_TOK_BUFSIZE 64
 #define SH_TOK_DELIM " \t\r\n\a"
 
@@ -304,7 +332,7 @@ void sh_loop(void)
     }
     
     args = sh_split_line(line);
-    status = sh_execute(args);
+    status = sh_execute_sequential(args);
 
     free(line);
     free(args);
