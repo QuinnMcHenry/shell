@@ -224,6 +224,49 @@ char *sh_read_line(void)
 }
 
 
+//pipe handler
+int sh_execute_pipe(char **left, char **right) 
+{
+    int fd[2];
+    pid_t pid_left, pid_right;
+    int status;
+    
+    if (pipe(fd) == -1) {
+        perror("sh: pipe");
+        return 1;
+    }
+
+    pid_left = fork();
+    if (pid_left == 0) {
+        //left child write end of pipe
+        dup2(fd[1], STDOUT_FILENO);
+        close(fd[0]);
+        close(fd[1]);
+        if (execvp(left[0], left) == -1) {
+            perror("sh");
+        }
+        exit(EXIT_FAILURE);
+    }
+    pid_right = fork();
+    if (pid_right == 0) {
+        dup2(fd[0], STDIN_FILENO);
+        close(fd[0]);
+        close(fd[1]);
+        if (execvp(right[0], right) == -1) {
+            perror("sh");
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    // parent closes both ends
+    close(fd[0]);
+    close(fd[1]);
+    waitpid(pid_left, &status, 0);
+    waitpid(pid_right, &status, 0);
+
+    return 1;
+}
+
 // split on &
 int sh_execute_sequential(char **args)
 {
@@ -241,7 +284,22 @@ int sh_execute_sequential(char **args)
         args[i] = NULL;
     
         if (segment_start[0] != NULL) {
-            status = sh_execute(segment_start); // call OG execute
+            // check for pipe
+            int j = 0;
+            int pipe_pos = -1;
+            while (segment_start[j] != NULL) {
+                if (strcmp(segment_start[j], "|") == 0) {
+                    pipe_pos = j;
+                    break;
+                }
+                j++;
+            }
+            if (pipe_pos != -1) {
+                segment_start[pipe_pos] = NULL;
+                status = sh_execute_pipe(segment_start, &segment_start[pipe_pos + 1]);
+            } else {
+                status = sh_execute(segment_start); // call OG execute
+            }
         }
         
         if (was_and) {
@@ -300,6 +358,7 @@ int valid_input(const char *line)
         (c >= '0' && c <= '9') ||
         c >= '-' && c <= '.' || c == '/' || c == '_' ||
         c == ' ' || c == '\t' ||
+        c == '|' ||
         c == '&' || c == ';' 
     )   {
           continue;
